@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "DevGlobe+",
+  "version": "1.0.0",
+  "description": "Adds custom country and language tooltips, then blocks unavailable repository links on DevGlobe.",
+  "author": "MythUp",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://devglobe.app/*",
+    "https://devglobe.xyz/*",
+    "https://*/*",
+    "http://*/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "DevGlobe+"
+  },
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://devglobe.app/space*",
+        "https://devglobe.xyz/space*"
+      ],
+      "js": ["space-content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

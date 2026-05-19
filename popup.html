@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DevGlobe Space Guards</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup-root">
+      <header class="popup-header">
+        <h1 class="popup-title" id="popupTitle">DevGlobe+</h1>
+      </header>
+
+      <section class="feature-list" aria-label="Feature toggles">
+        <label class="feature-row" for="flagTooltipToggle">
+          <span class="feature-row__label">Country tooltip</span>
+          <span class="switch">
+            <input id="flagTooltipToggle" type="checkbox" />
+            <span class="switch__track" aria-hidden="true"></span>
+          </span>
+        </label>
+
+        <label class="feature-row" for="repositoryBlockingToggle">
+          <span class="feature-row__label">Repository blocking</span>
+          <span class="switch">
+            <input id="repositoryBlockingToggle" type="checkbox" />
+            <span class="switch__track" aria-hidden="true"></span>
+          </span>
+        </label>
+      </section>
+
+      <footer class="popup-footer">
+        <div class="popup-footer__version" id="popupVersion">Version 1.0.0</div>
+        <div class="popup-footer__credit">
+          Développé avec ❤️ par <a id="popupAuthorLink" href="https://github.com/MythUp" target="_blank" rel="noreferrer noopener">MythUp</a>
+        </div>
+      </footer>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
