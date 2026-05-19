@@ -1,24 +1,23 @@
 # DevGlobe Space Guards
 
-Manifest V3 browser extension for DevGlobe.
+### Features
 
-Features:
-- shows a custom JS tooltip on flags with the country name and language names;
-- caches repository link states and blocks clicks when a check returns `404` or `503`;
-- rescans the page regularly because DevGlobe mounts and unmounts the popup dynamically.
+- Disabled links to repositories you can't access (private repositories or repositories you don't have permission to view);
+- Added tooltips to indicate which country and language each flag represents.
 
-Installation:
+### Installation
 1. Open the browser extensions page.
 2. Enable developer mode.
 3. Load this folder as an unpacked extension.
 
-Target pages:
-- `https://devglobe.app/space`
-- `https://devglobe.xyz/space`
+### Target pages
+- https://devglobe.app/space
+- https://devglobe.xyz/space
 
-Notes:
-- no external API is used;
-- repository checks are performed with native `fetch` calls from the service worker;
+### Notes
+- No external API is used.
+- Repository checks are performed with native `fetch` calls from the service worker.
+- Repository link state is cache-first, then refreshed in the background when needed.
 - the extension popup is available from the toolbar icon.
 
 ## Credits
