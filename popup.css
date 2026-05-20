@@ -161,3 +161,10 @@ a:hover {
   }
 }
 
+.popupAuthorLink{
+  text-decoration: none;
+}
+
+.popupAuthorLink:hover{
+  text-decoration: none;
+}

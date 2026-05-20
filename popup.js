@@ -29,17 +29,72 @@ async function initializePopup() {
 }
 
 function renderManifestDetails() {
-  const title = manifest.action && typeof manifest.action.default_title === 'string'
-    ? manifest.action.default_title
-    : manifest.name;
-  const version = typeof manifest.version === 'string' ? manifest.version : '1.0.0';
-  const author = typeof manifest.author === 'string' ? manifest.author : 'MythUp';
+  const manifestDetails = getManifestDetails();
 
-  document.title = title;
-  elements.title.textContent = title;
-  elements.version.textContent = `Version ${version}`;
-  elements.authorLink.textContent = author;
-  elements.authorLink.href = `https://github.com/${encodeURIComponent(author)}`;
+  document.title = manifestDetails.title;
+  elements.title.textContent = manifestDetails.title;
+  elements.version.textContent = `Version ${manifestDetails.version}`;
+  elements.authorLink.textContent = manifestDetails.authorName;
+
+  if (manifestDetails.authorUrl) {
+    elements.authorLink.href = manifestDetails.authorUrl;
+    elements.authorLink.target = '_blank';
+    elements.authorLink.rel = 'noopener noreferrer';
+  } else {
+    elements.authorLink.removeAttribute('href');
+    elements.authorLink.removeAttribute('target');
+    elements.authorLink.removeAttribute('rel');
+  }
+}
+
+function getManifestDetails() {
+  const title = typeof manifest.action?.default_title === 'string' && manifest.action.default_title.trim()
+    ? manifest.action.default_title.trim()
+    : typeof manifest.name === 'string' && manifest.name.trim()
+      ? manifest.name.trim()
+      : 'DevGlobe+';
+  const version = typeof manifest.version === 'string' && manifest.version.trim()
+    ? manifest.version.trim()
+    : 'unknown';
+  const author = getManifestAuthor(manifest);
+
+  return {
+    title,
+    version,
+    authorName: author.name,
+    authorUrl: author.url
+  };
+}
+
+function getManifestAuthor(manifestData) {
+  const rawAuthor = manifestData.author;
+
+  if (typeof rawAuthor === 'string' && rawAuthor.trim()) {
+    const authorName = rawAuthor.trim();
+    return {
+      name: authorName,
+      url: `https://github.com/${encodeURIComponent(authorName)}`
+    };
+  }
+
+  if (rawAuthor && typeof rawAuthor === 'object') {
+    const authorName = typeof rawAuthor.name === 'string' && rawAuthor.name.trim()
+      ? rawAuthor.name.trim()
+      : 'Unknown author';
+    const authorUrl = typeof rawAuthor.url === 'string' && rawAuthor.url.trim()
+      ? rawAuthor.url.trim()
+      : '';
+
+    return {
+      name: authorName,
+      url: authorUrl
+    };
+  }
+
+  return {
+    name: 'Unknown author',
+    url: ''
+  };
 }
 
 function bindActions() {

@@ -24,7 +24,9 @@
     {
       "matches": [
         "https://devglobe.app/space*",
-        "https://devglobe.xyz/space*"
+        "https://devglobe.xyz/space*",
+        "https://devglobe.app/developers/*",
+        "https://devglobe.xyz/developers/*"
       ],
       "js": ["space-content.js"],
       "run_at": "document_idle"

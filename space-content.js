@@ -132,6 +132,7 @@
     languagesRow.textContent = info.languageNames.join(', ');
 
     tooltipElement.append(titleRow, languagesRow);
+
     tooltipElement.dataset.visible = 'true';
     tooltipElement.setAttribute('aria-hidden', 'false');
 
