@@ -13,6 +13,8 @@
 ### Target pages
 - https://devglobe.app/space
 - https://devglobe.xyz/space
+- https://devglobe.app/developers/*
+- https://devglobe.xyz/developers/*
 
 ### Notes
 - No external API is used.
