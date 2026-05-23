@@ -6,7 +6,30 @@
   --pj-text-muted: rgba(244, 247, 249, 0.54);
   --pj-text-secondary: rgba(244, 247, 249, 0.72);
   --pj-border: rgba(255, 255, 255, 0.12);
-  --pj-accent: #3878c5;
+  --pj-accent: #3C58C4;
+}
+
+/* Popup theme overrides when popup html has light/dark class (applied from cached site theme) */
+html.light {
+  color-scheme: light;
+  --pj-page: #FFFFFF;
+  --pj-card: #FFFFFF;
+  --pj-text: #191C1F;
+  --pj-text-muted: rgba(25, 28, 31, 0.54);
+  --pj-text-secondary: rgba(25, 28, 31, 0.72);
+  --pj-border: rgba(25, 28, 31, 0.08);
+  --pj-accent: #3C58C4;
+}
+
+html.dark {
+  color-scheme: dark;
+  --pj-page: #0f1113;
+  --pj-card: #1a1d22;
+  --pj-text: #f4f7f9;
+  --pj-text-muted: rgba(244, 247, 249, 0.54);
+  --pj-text-secondary: rgba(244, 247, 249, 0.72);
+  --pj-border: rgba(255, 255, 255, 0.12);
+  --pj-accent: #3C58C4;
 }
 
 * {
@@ -167,4 +190,47 @@ a:hover {
 
 .popupAuthorLink:hover{
   text-decoration: none;
+}
+
+/* Theme-based tooltip and text colors */
+html.light {
+  --tooltip-bg: #FFFFFF;
+  --country-name-color: #191C1F;
+}
+
+html.dark {
+  --tooltip-bg: #0F1113;
+  --country-name-color: #EFF1F3;
+}
+
+/* Tooltip styling (apply to common tooltip class names used in the UI) */
+.tooltip,
+.tooltip-content,
+.flag-tooltip,
+.devglobe-flag-tooltip {
+  background: var(--tooltip-bg);
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: inherit;
+  box-shadow: 0 4px 12px rgba(16, 18, 20, 0.12);
+}
+
+/* Language text color */
+.lang-text,
+.language,
+[data-lang] {
+  color: #A3B2BD;
+}
+
+/* Country name color (switches with theme) */
+.country-name,
+.flag-country,
+.devglobe-flag-tooltip__country {
+  color: var(--country-name-color);
+}
+
+/* Languages text inside the tooltip */
+.devglobe-flag-tooltip__languages {
+  color: #A3B2BD;
+  font-size: 12px;
 }

@@ -5,6 +5,7 @@ const DEFAULT_SETTINGS = {
   flagTooltipsEnabled: true,
   repositoryBlockingEnabled: true
 };
+const THEME_CACHE_KEY = 'devglobe.cachedTheme.v1';
 
 const manifest = chrome.runtime.getManifest();
 
@@ -21,11 +22,26 @@ initializePopup();
 async function initializePopup() {
   renderManifestDetails();
   bindActions();
+  await applyCachedTheme();
   const settings = await loadSettings();
   await ensureDefaultSettings(settings);
   renderSettings(settings);
 
   chrome.storage.onChanged.addListener(handleStorageChange);
+}
+
+async function applyCachedTheme() {
+  try {
+    const stored = await chrome.storage.local.get(THEME_CACHE_KEY);
+    const cached = stored[THEME_CACHE_KEY];
+    if (cached && (cached.theme === 'light' || cached.theme === 'dark')) {
+      const root = document.documentElement;
+      root.classList.remove('light', 'dark');
+      root.classList.add(cached.theme);
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 function renderManifestDetails() {
@@ -157,9 +173,20 @@ async function updateSetting(settingName, value) {
 }
 
 function handleStorageChange(changes, areaName) {
-  if (areaName !== 'local' || !changes[SETTINGS_KEY]) {
+  if (areaName !== 'local') {
     return;
   }
 
-  renderSettings(normalizeSettings(changes[SETTINGS_KEY].newValue));
+  if (changes[SETTINGS_KEY]) {
+    renderSettings(normalizeSettings(changes[SETTINGS_KEY].newValue));
+  }
+
+  if (changes[THEME_CACHE_KEY]) {
+    const newVal = changes[THEME_CACHE_KEY].newValue;
+    if (newVal && (newVal.theme === 'light' || newVal.theme === 'dark')) {
+      const root = document.documentElement;
+      root.classList.remove('light', 'dark');
+      root.classList.add(newVal.theme);
+    }
+  }
 }

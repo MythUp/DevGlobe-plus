@@ -4,6 +4,7 @@
   // Constants
   const FLAG_CLASS = 'devglobe-flag';
   const FLAG_TOOLTIP_CLASS = 'devglobe-flag-tooltip';
+  const THEME_CACHE_KEY = 'devglobe.cachedTheme.v1';
   const BLOCKED_LINK_CLASS = 'devglobe-repo-link--blocked';
   const FEATURE_SETTINGS_KEY = 'devglobe.featureSettings.v1';
   const SCAN_INTERVAL_MS = 1500;
@@ -30,6 +31,9 @@
   let scanIntervalId = null;
   let scanQueued = false;
   let cacheReadyPromise = null;
+  let lastPersistedTheme = null;
+  let detectScheduled = null;
+  let detectRunning = false;
 
   try {
     countryDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -1307,16 +1311,14 @@
         cursor: help !important;
       }
 
+      /* Default (fallback) tooltip styles */
       .${FLAG_TOOLTIP_CLASS} {
         position: fixed;
         z-index: 2147483647;
         min-width: 190px;
         max-width: 240px;
         padding: 10px 12px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
         border-radius: 12px;
-        background: #1a1d22;
-        color: #f4f7f9;
         box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
@@ -1327,8 +1329,13 @@
         opacity: 0;
         transform: translateY(4px);
         transition: opacity 140ms ease, transform 140ms ease;
+        /* sensible defaults if no theme class present */
+        background: #1a1d22;
+        color: #f4f7f9;
+        border: 1px solid rgba(255, 255, 255, 0.14);
       }
 
+      /* Visible state */
       .${FLAG_TOOLTIP_CLASS}[data-visible='true'] {
         opacity: 1;
         transform: translateY(0);
@@ -1354,18 +1361,42 @@
         transform: translateX(-50%) rotate(225deg);
       }
 
+      /* Theme-aware overrides: light/dark classes on the page <html> element
+        Also support our injected helper classes 'devglobe-theme-light'/'devglobe-theme-dark' */
+      html.light .${FLAG_TOOLTIP_CLASS}, html.devglobe-theme-light .${FLAG_TOOLTIP_CLASS} {
+        background: #FFFFFF;
+        color: #191C1F;
+        border: 1px solid rgba(25, 28, 31, 0.08);
+      }
+
+      html.dark .${FLAG_TOOLTIP_CLASS}, html.devglobe-theme-dark .${FLAG_TOOLTIP_CLASS} {
+        background: #0F1113;
+        color: #EFF1F3;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      /* Country and language colors inside the tooltip */
       .devglobe-flag-tooltip__country {
         font-size: 13px;
         font-weight: 700;
-        color: #f4f7f9;
         text-align: center;
+        /* fallback */
+        color: #f4f7f9;
+      }
+
+      html.light .devglobe-flag-tooltip__country {
+        color: #191C1F;
+      }
+
+      html.dark .devglobe-flag-tooltip__country {
+        color: #EFF1F3;
       }
 
       .devglobe-flag-tooltip__languages {
         margin-top: 3px;
         font-size: 12px;
-        color: rgba(244, 247, 249, 0.72);
         text-align: center;
+        color: #A3B2BD; /* requested language text color */
       }
 
       .${BLOCKED_LINK_CLASS} {
@@ -1382,4 +1413,113 @@
   }
 
   ensureTooltipStyles();
+  
+  // Detect page theme and add helper class if needed so tooltip styles apply
+  function detectAndApplyTheme() {
+    try {
+      const root = document.documentElement;
+
+      // If page already uses light/dark classes, persist and do nothing
+      if (root.classList.contains('light') || root.classList.contains('dark')) {
+        // remove any helper classes we previously added
+        root.classList.remove('devglobe-theme-light', 'devglobe-theme-dark');
+        persistDetectedTheme(root.classList.contains('light') ? 'light' : 'dark');
+        return;
+      }
+
+      // If helper classes already set, keep them and persist
+      if (root.classList.contains('devglobe-theme-light') || root.classList.contains('devglobe-theme-dark')) {
+        persistDetectedTheme(root.classList.contains('devglobe-theme-light') ? 'light' : 'dark');
+        return;
+      }
+
+      // Prefer explicit data-theme attribute if present
+      const dataTheme = root.getAttribute('data-theme');
+      if (dataTheme === 'light' || dataTheme === 'dark') {
+        const theme = dataTheme === 'light' ? 'light' : 'dark';
+        root.classList.add(theme === 'light' ? 'devglobe-theme-light' : 'devglobe-theme-dark');
+        persistDetectedTheme(theme);
+        return;
+      }
+
+      // Prefer prefers-color-scheme media query
+      try {
+        const mqDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+        if (mqDark && typeof mqDark.matches === 'boolean') {
+          const theme = mqDark.matches ? 'dark' : 'light';
+          root.classList.add(theme === 'dark' ? 'devglobe-theme-dark' : 'devglobe-theme-light');
+          // persist
+          persistDetectedTheme(theme);
+          // listen for changes
+          mqDark.addEventListener ? mqDark.addEventListener('change', () => detectAndApplyTheme()) : mqDark.addListener(() => detectAndApplyTheme());
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // Fallback: compute background color luminance
+      try {
+        const bg = window.getComputedStyle(root).backgroundColor || '';
+        const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+        if (m) {
+          const r = Number(m[1]) / 255;
+          const g = Number(m[2]) / 255;
+          const b = Number(m[3]) / 255;
+          // perceptual luminance
+          const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          const theme = L > 0.6 ? 'light' : 'dark';
+          root.classList.add(theme === 'light' ? 'devglobe-theme-light' : 'devglobe-theme-dark');
+          persistDetectedTheme(theme);
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      // Default to dark
+      document.documentElement.classList.add('devglobe-theme-dark');
+
+      // persist cache
+      try {
+        const cached = { theme: 'dark', origin: location.origin, ts: Date.now() };
+        chrome.storage && chrome.storage.local && chrome.storage.local.set({ [THEME_CACHE_KEY]: cached });
+      } catch (e) {
+        // ignore storage errors
+      }
+    } catch (e) {
+      // noop
+    }
+  }
+
+  // helper to persist theme when we set helper classes earlier in detection
+  function persistDetectedTheme(theme) {
+    try {
+      const normalized = theme === 'light' ? 'light' : 'dark';
+      if (lastPersistedTheme === normalized) return;
+      lastPersistedTheme = normalized;
+      const cached = { theme: normalized, origin: location.origin, ts: Date.now() };
+      chrome.storage && chrome.storage.local && chrome.storage.local.set({ [THEME_CACHE_KEY]: cached });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // observe changes on <html> attributes to update theme helper classes
+  try {
+    const htmlObserver = new MutationObserver(() => {
+      // debounce rapid mutations
+      if (detectScheduled) return;
+      detectScheduled = window.setTimeout(() => {
+        detectScheduled = null;
+        detectAndApplyTheme();
+      }, 120);
+    });
+    htmlObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+  } catch (e) {
+    // ignore
+  }
+
+  // Initial detection
+  detectAndApplyTheme();
 })();

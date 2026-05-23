@@ -327,6 +327,7 @@ async function fetchRepositoryState(url) {
       credentials: 'omit'
     });
 
+    // If server rejects HEAD, fall back to GET
     if (response.status === 405 || response.status === 501) {
       response = await fetch(url, {
         method: 'GET',
@@ -334,6 +335,38 @@ async function fetchRepositoryState(url) {
         cache: 'no-store',
         credentials: 'omit'
       });
+    } else {
+      // If HEAD returned 200 but reports empty content (or missing content-length), perform a GET to verify
+      if (response.status === 200) {
+        const cl = response.headers.get('content-length');
+        const contentLength = cl !== null ? Number(cl) : NaN;
+        if (!Number.isFinite(contentLength) || contentLength === 0) {
+          try {
+            const getResp = await fetch(url, {
+              method: 'GET',
+              redirect: 'follow',
+              cache: 'no-store',
+              credentials: 'omit'
+            });
+            const text = await (getResp.text ? getResp.text() : Promise.resolve(''));
+            // If GET response body is empty (or only whitespace), consider the repository inaccessible
+            if (typeof text === 'string' && text.trim().length === 0) {
+              return {
+                url,
+                finalUrl: getResp.url || url,
+                status: getResp.status,
+                checkedAt: Date.now(),
+                state: 'blocked',
+                error: 'Empty response body'
+              };
+            }
+            // otherwise use GET response as the authoritative response
+            response = getResp;
+          } catch (e) {
+            // if GET fails, fall back to HEAD response handling below
+          }
+        }
+      }
     }
 
     return {
