@@ -2,10 +2,9 @@
 
 ### Features
 
-- Disabled links to repositories you can't access (private repositories or repositories you don't have permission to view);
+- Disabled links to repositories you can't access (private repositories or repositories you don't have permission to view).
 - Added tooltips to indicate which country and language each flag represents.
 - Added sortable stats tables on the /stats pages.
-- Added a popup toggle to enable or disable stats table sorting.
 
 ### Installation
 1. Open the browser extensions page.
