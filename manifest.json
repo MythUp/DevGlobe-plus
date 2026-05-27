@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DevGlobe+",
   "version": "2.0.0",
-  "description": "Adds custom country and language tooltips, then blocks unavailable repository links on DevGlobe.",
+  "description": "Adds custom country and language tooltips, blocks unavailable repository links on DevGlobe, and makes statistics sortable.",
   "author": "MythUp",
   "permissions": [
     "storage"
