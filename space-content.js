@@ -7,13 +7,19 @@
   const THEME_CACHE_KEY = 'devglobe.cachedTheme.v1';
   const BLOCKED_LINK_CLASS = 'devglobe-repo-link--blocked';
   const FEATURE_SETTINGS_KEY = 'devglobe.featureSettings.v1';
+  const STATS_SORTABLE_COLUMN_LABELS = new Set(['hours', 'devs', 'growth']);
+  const STATS_SORT_BUTTON_CLASS = 'devglobe-stats-sort-button';
+  const STATS_SORT_ARROW_CLASS = 'devglobe-stats-sort-arrow';
+  const STATS_SORTABLE_HEADER_CLASS = 'devglobe-stats-sortable-header';
+  const STATS_TABLE_STYLE_ID = 'devglobe-stats-table-style';
   const SCAN_INTERVAL_MS = 1500;
   const CACHE_FRESHNESS_MS = 2 * 60 * 1000;
   
   // Default settings
   const DEFAULT_FEATURE_SETTINGS = {
     flagTooltipsEnabled: true,
-    repositoryBlockingEnabled: true
+    repositoryBlockingEnabled: true,
+    statsTableSortingEnabled: true
   };
 
   // Global state
@@ -27,6 +33,7 @@
   let repositoryStateCache = new Map();
   let pendingRepositoryRequests = new Map();
   const repositoryNavigationReplay = new WeakSet();
+  const statsTableSortStateByKey = new Map();
   let mutationObserver = null;
   let scanIntervalId = null;
   let scanQueued = false;
@@ -509,7 +516,10 @@
         : DEFAULT_FEATURE_SETTINGS.flagTooltipsEnabled,
       repositoryBlockingEnabled: typeof rawSettings?.repositoryBlockingEnabled === 'boolean'
         ? rawSettings.repositoryBlockingEnabled
-        : DEFAULT_FEATURE_SETTINGS.repositoryBlockingEnabled
+        : DEFAULT_FEATURE_SETTINGS.repositoryBlockingEnabled,
+      statsTableSortingEnabled: typeof rawSettings?.statsTableSortingEnabled === 'boolean'
+        ? rawSettings.statsTableSortingEnabled
+        : DEFAULT_FEATURE_SETTINGS.statsTableSortingEnabled
     };
   }
 
@@ -539,6 +549,7 @@
     if (
       previousSettings.flagTooltipsEnabled !== featureSettings.flagTooltipsEnabled
       || previousSettings.repositoryBlockingEnabled !== featureSettings.repositoryBlockingEnabled
+      || previousSettings.statsTableSortingEnabled !== featureSettings.statsTableSortingEnabled
     ) {
       scheduleScan();
     }
@@ -638,6 +649,470 @@
     } else {
       clearRepositoryVisualState();
     }
+
+    if (isStatsPage()) {
+      enhanceStatsTables();
+    }
+  }
+
+  function enhanceStatsTables() {
+    const tables = document.querySelectorAll('table');
+
+    tables.forEach((table) => {
+      const config = getStatsTableConfig(table);
+      if (!config) {
+        return;
+      }
+
+      const state = getOrCreateStatsTableState(table, config);
+      captureStatsTableBaseline(table, state);
+      setupStatsTableControls(table, config, state);
+
+      if (!featureSettings.statsTableSortingEnabled) {
+        restoreStatsTableOriginalOrder(table, state);
+        state.activeColumnKey = state.initialColumnKey;
+        state.activeDirection = state.initialDirection;
+        updateStatsTableSortIndicators(table, config, state);
+        return;
+      }
+
+      if (state.activeColumnKey && state.activeDirection) {
+        applyStatsTableSort(table, config, state, state.activeColumnKey, state.activeDirection);
+        return;
+      }
+
+      updateStatsTableSortIndicators(table, config, state);
+    });
+  }
+
+  function getStatsTableConfig(table) {
+    const tableKey = getStatsTableKey(table);
+    if (!tableKey) {
+      return null;
+    }
+
+    const sortableHeaders = Array.from(table.querySelectorAll('thead th'))
+      .map((cell, index) => {
+        const label = getStatsHeaderLabel(cell);
+        const columnKey = normalizeStatsColumnKey(label);
+
+        if (!STATS_SORTABLE_COLUMN_LABELS.has(columnKey)) {
+          return null;
+        }
+
+        return {
+          cell,
+          index,
+          label,
+          columnKey
+        };
+      })
+      .filter(Boolean);
+
+    if (!sortableHeaders.length) {
+      return null;
+    }
+
+    return {
+      tableKey,
+      sortableHeaders
+    };
+  }
+
+  function getOrCreateStatsTableState(table, config) {
+    const existingState = statsTableSortStateByKey.get(config.tableKey);
+    if (existingState) {
+      if (!existingState.initialColumnKey && !existingState.initialDirection) {
+        populateInitialStatsTableState(table, config, existingState);
+      }
+
+      if (typeof existingState.initialSortPending !== 'boolean') {
+        existingState.initialSortPending = Boolean(existingState.initialColumnKey && existingState.initialDirection);
+      }
+
+      return existingState;
+    }
+
+    const state = {
+      initialColumnKey: null,
+      initialDirection: null,
+      activeColumnKey: null,
+      activeDirection: null,
+      initialSortPending: false,
+      columnDirections: new Map(),
+      originalRows: []
+    };
+
+    populateInitialStatsTableState(table, config, state);
+    state.initialSortPending = Boolean(state.initialColumnKey && state.initialDirection);
+
+    statsTableSortStateByKey.set(config.tableKey, state);
+    return state;
+  }
+
+  function populateInitialStatsTableState(table, config, state) {
+    const tbody = table.tBodies[0];
+    const rows = tbody ? Array.from(tbody.rows) : [];
+
+    if (rows.length >= 2) {
+      for (const header of config.sortableHeaders) {
+        const detectedDirection = detectStatsColumnDirection(rows, header.index);
+        if (!detectedDirection) {
+          continue;
+        }
+
+        if (!state.initialColumnKey) {
+          state.initialColumnKey = header.columnKey;
+          state.initialDirection = detectedDirection;
+        }
+
+        state.columnDirections.set(header.columnKey, detectedDirection);
+
+        if (!state.activeColumnKey) {
+          state.activeColumnKey = header.columnKey;
+          state.activeDirection = detectedDirection;
+        }
+      }
+    }
+  }
+
+  function captureStatsTableBaseline(table, state) {
+    const tbody = table.tBodies[0];
+    if (!tbody) {
+      return;
+    }
+
+    const hasValidBaseline = state.originalRows.length > 0
+      && state.originalRows.every((row) => row.parentElement === tbody);
+
+    if (hasValidBaseline) {
+      return;
+    }
+
+    state.originalRows = Array.from(tbody.rows);
+  }
+
+  function restoreStatsTableOriginalOrder(table, state) {
+    const tbody = table.tBodies[0];
+    if (!tbody) {
+      return;
+    }
+
+    if (state.originalRows.length === 0 || !state.originalRows.every((row) => row.parentElement === tbody)) {
+      captureStatsTableBaseline(table, state);
+    }
+
+    if (state.originalRows.length === 0) {
+      return;
+    }
+
+    const currentRows = Array.from(tbody.rows);
+    const isAlreadyBaseline = currentRows.length === state.originalRows.length
+      && currentRows.every((row, index) => row === state.originalRows[index]);
+
+    if (isAlreadyBaseline) {
+      renumberStatsRows(tbody);
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    state.originalRows.forEach((row) => {
+      if (row.parentElement === tbody) {
+        fragment.appendChild(row);
+      }
+    });
+
+    tbody.appendChild(fragment);
+    renumberStatsRows(tbody);
+  }
+
+  function detectStatsColumnDirection(rows, columnIndex) {
+    const values = [];
+
+    for (const row of rows) {
+      const value = getStatsSortableNumber(row.cells[columnIndex] || null);
+      if (value === null) {
+        return null;
+      }
+
+      values.push(value);
+    }
+
+    if (values.length < 2) {
+      return null;
+    }
+
+    const isAscending = values.every((value, index) => index === 0 || values[index - 1] <= value);
+    const isDescending = values.every((value, index) => index === 0 || values[index - 1] >= value);
+
+    if (isAscending && !isDescending) {
+      return 'asc';
+    }
+
+    if (isDescending && !isAscending) {
+      return 'desc';
+    }
+
+    return null;
+  }
+
+  function setupStatsTableControls(table, config, state) {
+    config.sortableHeaders.forEach(({ cell, columnKey, label }) => {
+      const existingButton = cell.querySelector('[data-devglobe-stats-sort-button="true"]');
+      cell.dataset.devglobeStatsSortLabel = label;
+      cell.dataset.devglobeStatsSortColumn = columnKey;
+      cell.classList.add(STATS_SORTABLE_HEADER_CLASS);
+
+      if (existingButton) {
+        return;
+      }
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = STATS_SORT_BUTTON_CLASS;
+      button.setAttribute('aria-label', `Sort by ${label}`);
+      button.dataset.devglobeStatsSortButton = 'true';
+
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'devglobe-stats-sort-label';
+      labelSpan.textContent = label;
+
+      const arrowSpan = document.createElement('span');
+      arrowSpan.className = STATS_SORT_ARROW_CLASS;
+      arrowSpan.dataset.devglobeStatsSortArrow = 'true';
+      arrowSpan.dataset.visible = 'false';
+      arrowSpan.setAttribute('aria-hidden', 'true');
+      arrowSpan.appendChild(createStatsSortArrowIcon());
+
+      button.append(labelSpan, arrowSpan);
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!featureSettings.statsTableSortingEnabled) {
+          return;
+        }
+
+        const rememberedDirection = state.columnDirections.get(columnKey);
+        const isInitialColumnFirstClick = state.initialSortPending
+          && state.initialColumnKey === columnKey
+          && state.activeColumnKey === columnKey
+          && state.activeDirection === state.initialDirection;
+
+        const nextDirection = isInitialColumnFirstClick
+          ? state.initialDirection
+          : state.activeColumnKey === columnKey
+          ? (state.activeDirection === 'desc' ? 'asc' : 'desc')
+          : (rememberedDirection || 'desc');
+
+        applyStatsTableSort(table, config, state, columnKey, nextDirection);
+      });
+
+      cell.replaceChildren(button);
+    });
+  }
+
+  function applyStatsTableSort(table, config, state, columnKey, direction) {
+    if (!featureSettings.statsTableSortingEnabled) {
+      return;
+    }
+
+    const targetHeader = config.sortableHeaders.find((header) => header.columnKey === columnKey);
+    if (!targetHeader) {
+      return;
+    }
+
+    const tbody = table.tBodies[0];
+    if (!tbody) {
+      return;
+    }
+
+    const rows = Array.from(tbody.rows);
+    if (rows.length < 2) {
+      if (state.initialColumnKey === columnKey && direction === state.initialDirection) {
+        state.initialSortPending = false;
+      }
+
+      state.columnDirections.set(columnKey, direction);
+      state.activeColumnKey = columnKey;
+      state.activeDirection = direction;
+      updateStatsTableSortIndicators(table, config, state);
+      renumberStatsRows(tbody);
+      return;
+    }
+
+    const sortedRows = rows
+      .map((row, index) => {
+        const valueCell = row.cells[targetHeader.index] || null;
+        const value = getStatsSortableNumber(valueCell);
+        const rankValue = getStatsSortableNumber(row.cells[0] || null);
+
+        return {
+          row,
+          value,
+          originalRank: Number.isFinite(rankValue) ? rankValue : index + 1
+        };
+      })
+      .sort((left, right) => {
+        if (left.value === null && right.value === null) {
+          return left.originalRank - right.originalRank;
+        }
+
+        if (left.value === null) {
+          return 1;
+        }
+
+        if (right.value === null) {
+          return -1;
+        }
+
+        if (left.value !== right.value) {
+          return direction === 'asc'
+            ? left.value - right.value
+            : right.value - left.value;
+        }
+
+        return left.originalRank - right.originalRank;
+      })
+      .map((entry) => entry.row);
+
+    if (state.initialColumnKey === columnKey && direction === state.initialDirection) {
+      state.initialSortPending = false;
+    }
+
+    state.columnDirections.set(columnKey, direction);
+    state.activeColumnKey = columnKey;
+    state.activeDirection = direction;
+
+    updateStatsTableSortIndicators(table, config, state);
+
+    const isSameOrder = sortedRows.length === rows.length && sortedRows.every((row, index) => row === rows[index]);
+    if (isSameOrder) {
+      renumberStatsRows(tbody);
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    sortedRows.forEach((row) => {
+      fragment.appendChild(row);
+    });
+
+    tbody.appendChild(fragment);
+    renumberStatsRows(tbody);
+  }
+
+  function renumberStatsRows(tbody) {
+    Array.from(tbody.rows).forEach((row, index) => {
+      const rankCell = row.cells[0];
+      if (rankCell) {
+        rankCell.textContent = String(index + 1);
+      }
+    });
+  }
+
+  function updateStatsTableSortIndicators(table, config, state) {
+    const sortingEnabled = featureSettings.statsTableSortingEnabled;
+
+    config.sortableHeaders.forEach(({ cell, columnKey, label }) => {
+      const button = cell.querySelector('[data-devglobe-stats-sort-button="true"]');
+      const arrow = cell.querySelector('[data-devglobe-stats-sort-arrow="true"]');
+      const isActive = sortingEnabled
+        && state.activeColumnKey === columnKey
+        && (state.activeDirection === 'asc' || state.activeDirection === 'desc');
+
+      cell.setAttribute('aria-sort', isActive
+        ? state.activeDirection === 'asc'
+          ? 'ascending'
+          : 'descending'
+        : 'none');
+
+      if (button) {
+        button.setAttribute('aria-disabled', sortingEnabled ? 'false' : 'true');
+        button.setAttribute('aria-label', isActive
+          ? `Sort by ${label}, ${state.activeDirection === 'asc' ? 'ascending' : 'descending'}`
+          : `Sort by ${label}`);
+      }
+
+      if (arrow) {
+        arrow.dataset.visible = isActive ? 'true' : 'false';
+
+        if (isActive) {
+          arrow.dataset.direction = state.activeDirection;
+        } else {
+          arrow.removeAttribute('data-direction');
+        }
+      }
+    });
+  }
+
+  function getStatsTableKey(table) {
+    const caption = table.querySelector('caption');
+    const captionText = normalizeStatsText(caption?.textContent || '');
+    if (captionText) {
+      return captionText;
+    }
+
+    const section = table.closest('section');
+    if (!section) {
+      return '';
+    }
+
+    const heading = section.querySelector('header h1, header h2, header h3, header h4, header h5, header h6');
+    return normalizeStatsText(heading?.textContent || '');
+  }
+
+  function getStatsHeaderLabel(cell) {
+    return normalizeStatsText(cell.dataset.devglobeStatsSortLabel || cell.textContent || '');
+  }
+
+  function normalizeStatsColumnKey(value) {
+    return normalizeStatsText(value).toLowerCase();
+  }
+
+  function normalizeStatsText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function getStatsSortableNumber(cell) {
+    if (!cell) {
+      return null;
+    }
+
+    const text = normalizeStatsText(cell.textContent || '');
+    if (!text) {
+      return null;
+    }
+
+    const numericText = text.replace(/,/g, '').replace(/[^0-9.-]/g, '');
+    if (!numericText) {
+      return null;
+    }
+
+    const numeric = Number.parseFloat(numericText);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  function createStatsSortArrowIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '12');
+    svg.setAttribute('height', '12');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M7 14l5-5 5 5');
+    svg.appendChild(path);
+
+    return svg;
+  }
+
+  function isStatsPage() {
+    return window.location.pathname.toLowerCase().replace(/\/+$/, '') === '/stats';
   }
 
   function clearFlagVisualState() {
@@ -1412,7 +1887,79 @@
     }
   }
 
+  function ensureStatsTableStyles() {
+    if (document.getElementById(STATS_TABLE_STYLE_ID)) {
+      return;
+    }
+
+    const style = document.createElement('style');
+    style.id = STATS_TABLE_STYLE_ID;
+    style.textContent = `
+      .${STATS_SORTABLE_HEADER_CLASS} {
+        user-select: none;
+      }
+
+      .${STATS_SORT_BUTTON_CLASS} {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        width: 100%;
+        gap: 0.35rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-weight: inherit;
+        letter-spacing: inherit;
+        line-height: inherit;
+        text-align: inherit;
+        white-space: nowrap;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+      }
+
+      .${STATS_SORT_BUTTON_CLASS}:focus-visible {
+        outline: 2px solid #115bca;
+        outline-offset: 3px;
+        border-radius: 8px;
+      }
+
+      .devglobe-stats-sort-label {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .${STATS_SORT_ARROW_CLASS} {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 12px;
+        height: 12px;
+        flex: 0 0 auto;
+        opacity: 0;
+        transform: translateY(1px);
+        transition: opacity 140ms ease, transform 140ms ease;
+      }
+
+      .${STATS_SORT_ARROW_CLASS}[data-visible='true'] {
+        opacity: 1;
+      }
+
+      .${STATS_SORT_ARROW_CLASS}[data-direction='desc'] {
+        transform: translateY(1px) rotate(180deg);
+      }
+    `;
+
+    const root = document.head || document.documentElement;
+    if (root) {
+      root.appendChild(style);
+    }
+  }
+
   ensureTooltipStyles();
+  ensureStatsTableStyles();
   
   // Detect page theme and add helper class if needed so tooltip styles apply
   function detectAndApplyTheme() {

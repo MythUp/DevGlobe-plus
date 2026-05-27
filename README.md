@@ -4,6 +4,8 @@
 
 - Disabled links to repositories you can't access (private repositories or repositories you don't have permission to view);
 - Added tooltips to indicate which country and language each flag represents.
+- Added sortable stats tables on the /stats pages.
+- Added a popup toggle to enable or disable stats table sorting.
 
 ### Installation
 1. Open the browser extensions page.
@@ -13,6 +15,8 @@
 ### Target pages
 - https://devglobe.app/space
 - https://devglobe.xyz/space
+- https://devglobe.app/stats
+- https://devglobe.xyz/stats
 - https://devglobe.app/developers/*
 - https://devglobe.xyz/developers/*
 

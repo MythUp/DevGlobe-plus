@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DevGlobe+",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Adds custom country and language tooltips, then blocks unavailable repository links on DevGlobe.",
   "author": "MythUp",
   "permissions": [
@@ -31,6 +31,8 @@
       "matches": [
         "https://devglobe.app/space*",
         "https://devglobe.xyz/space*",
+        "https://devglobe.app/stats*",
+        "https://devglobe.xyz/stats*",
         "https://devglobe.app/developers/*",
         "https://devglobe.xyz/developers/*"
       ],
