@@ -927,6 +927,9 @@
       return;
     }
 
+    const hoursHeader = config.sortableHeaders.find((header) => header.columnKey === 'hours');
+    const hoursColumnIndex = hoursHeader ? hoursHeader.index : -1;
+
     const rows = Array.from(tbody.rows);
     if (rows.length < 2) {
       if (state.initialColumnKey === columnKey && direction === state.initialDirection) {
@@ -944,16 +947,49 @@
     const sortedRows = rows
       .map((row, index) => {
         const valueCell = row.cells[targetHeader.index] || null;
-        const value = getStatsSortableNumber(valueCell);
+        const growthText = normalizeStatsText(valueCell?.textContent || '').toLowerCase();
+        const isNewGrowthValue = columnKey === 'growth' && growthText === 'new';
+        const value = isNewGrowthValue ? null : getStatsSortableNumber(valueCell);
         const rankValue = getStatsSortableNumber(row.cells[0] || null);
+        const hoursValue = hoursColumnIndex >= 0
+          ? getStatsSortableNumber(row.cells[hoursColumnIndex] || null)
+          : null;
 
         return {
           row,
           value,
+          isNewGrowthValue,
+          hoursValue: Number.isFinite(hoursValue) ? hoursValue : null,
           originalRank: Number.isFinite(rankValue) ? rankValue : index + 1
         };
       })
       .sort((left, right) => {
+        if (columnKey === 'growth') {
+          if (left.isNewGrowthValue !== right.isNewGrowthValue) {
+            return direction === 'asc'
+              ? (left.isNewGrowthValue ? 1 : -1)
+              : (left.isNewGrowthValue ? -1 : 1);
+          }
+
+          if (left.isNewGrowthValue && right.isNewGrowthValue) {
+            if (left.hoursValue === null && right.hoursValue !== null) {
+              return 1;
+            }
+
+            if (left.hoursValue !== null && right.hoursValue === null) {
+              return -1;
+            }
+
+            if (left.hoursValue !== right.hoursValue) {
+              return direction === 'asc'
+                ? left.hoursValue - right.hoursValue
+                : right.hoursValue - left.hoursValue;
+            }
+
+            return left.originalRank - right.originalRank;
+          }
+        }
+
         if (left.value === null && right.value === null) {
           return left.originalRank - right.originalRank;
         }

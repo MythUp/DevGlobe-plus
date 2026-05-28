@@ -6,7 +6,7 @@
   --pj-text-muted: rgba(244, 247, 249, 0.54);
   --pj-text-secondary: rgba(244, 247, 249, 0.72);
   --pj-border: rgba(255, 255, 255, 0.12);
-  --pj-accent: #3C58C4;
+  --pj-accent: #115bca;
 }
 
 /* Popup theme overrides when popup html has light/dark class (applied from cached site theme) */
@@ -29,7 +29,7 @@ html.dark {
   --pj-text-muted: rgba(244, 247, 249, 0.54);
   --pj-text-secondary: rgba(244, 247, 249, 0.72);
   --pj-border: rgba(255, 255, 255, 0.12);
-  --pj-accent: #3C58C4;
+  --pj-accent: #115bca;
 }
 
 * {
@@ -77,6 +77,11 @@ a:hover {
   font-weight: 700;
   line-height: 1.25;
   color: var(--pj-text);
+  text-decoration: none;
+}
+
+.popup-title:hover {
+  text-decoration: none;
 }
 
 .feature-list {
