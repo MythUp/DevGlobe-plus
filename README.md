@@ -23,7 +23,7 @@
 - No external API is used.
 - Repository checks are performed with native `fetch` calls from the service worker.
 - Repository link state is cache-first, then refreshed in the background when needed.
-- the extension popup is available from the toolbar icon.
+- the extension popup is available from the toolbar icon. It provides quick access to the [DevGlobe website](https://devglobe.app).
 
 ## Credits
 
