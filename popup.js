@@ -4,7 +4,8 @@ const SETTINGS_KEY = 'devglobe.featureSettings.v1';
 const DEFAULT_SETTINGS = {
   flagTooltipsEnabled: true,
   repositoryBlockingEnabled: true,
-  statsTableSortingEnabled: true
+  statsTableSortingEnabled: true,
+  searchKeyboardShortcutEnabled: true
 };
 const THEME_CACHE_KEY = 'devglobe.cachedTheme.v1';
 
@@ -16,7 +17,8 @@ const elements = {
   authorLink: document.getElementById('popupAuthorLink'),
   flagTooltipToggle: document.getElementById('flagTooltipToggle'),
   repositoryBlockingToggle: document.getElementById('repositoryBlockingToggle'),
-  statsTableSortingToggle: document.getElementById('statsTableSortingToggle')
+  statsTableSortingToggle: document.getElementById('statsTableSortingToggle'),
+  searchKeyboardShortcutToggle: document.getElementById('searchKeyboardShortcutToggle')
 };
 
 initializePopup();
@@ -127,6 +129,9 @@ function bindActions() {
   elements.statsTableSortingToggle.addEventListener('change', () => {
     void updateSetting('statsTableSortingEnabled', elements.statsTableSortingToggle.checked);
   });
+  elements.searchKeyboardShortcutToggle.addEventListener('change', () => {
+    void updateSetting('searchKeyboardShortcutEnabled', elements.searchKeyboardShortcutToggle.checked);
+  });
 }
 
 async function loadSettings() {
@@ -154,7 +159,10 @@ function normalizeSettings(rawSettings) {
       : DEFAULT_SETTINGS.repositoryBlockingEnabled,
     statsTableSortingEnabled: typeof rawSettings?.statsTableSortingEnabled === 'boolean'
       ? rawSettings.statsTableSortingEnabled
-      : DEFAULT_SETTINGS.statsTableSortingEnabled
+      : DEFAULT_SETTINGS.statsTableSortingEnabled,
+    searchKeyboardShortcutEnabled: typeof rawSettings?.searchKeyboardShortcutEnabled === 'boolean'
+      ? rawSettings.searchKeyboardShortcutEnabled
+      : DEFAULT_SETTINGS.searchKeyboardShortcutEnabled
   };
 }
 
@@ -168,6 +176,7 @@ function renderSettings(settings) {
   elements.flagTooltipToggle.checked = normalizedSettings.flagTooltipsEnabled;
   elements.repositoryBlockingToggle.checked = normalizedSettings.repositoryBlockingEnabled;
   elements.statsTableSortingToggle.checked = normalizedSettings.statsTableSortingEnabled;
+  elements.searchKeyboardShortcutToggle.checked = normalizedSettings.searchKeyboardShortcutEnabled;
 }
 
 async function updateSetting(settingName, value) {

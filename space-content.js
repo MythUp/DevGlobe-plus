@@ -19,10 +19,9 @@
   const DEFAULT_FEATURE_SETTINGS = {
     flagTooltipsEnabled: true,
     repositoryBlockingEnabled: true,
-    statsTableSortingEnabled: true
+    statsTableSortingEnabled: true,
+    searchKeyboardShortcutEnabled: true
   };
-
-  // Global state
   let featureSettings = { ...DEFAULT_FEATURE_SETTINGS };
   let tooltipElement = null;
   let tooltipVisible = false;
@@ -519,7 +518,10 @@
         : DEFAULT_FEATURE_SETTINGS.repositoryBlockingEnabled,
       statsTableSortingEnabled: typeof rawSettings?.statsTableSortingEnabled === 'boolean'
         ? rawSettings.statsTableSortingEnabled
-        : DEFAULT_FEATURE_SETTINGS.statsTableSortingEnabled
+        : DEFAULT_FEATURE_SETTINGS.statsTableSortingEnabled,
+      searchKeyboardShortcutEnabled: typeof rawSettings?.searchKeyboardShortcutEnabled === 'boolean'
+        ? rawSettings.searchKeyboardShortcutEnabled
+        : DEFAULT_FEATURE_SETTINGS.searchKeyboardShortcutEnabled
     };
   }
 
@@ -576,6 +578,7 @@
     document.addEventListener('pointermove', handlePointerMove, true);
     document.addEventListener('pointerout', handlePointerOut, true);
     document.addEventListener('click', handleClick, true);
+    document.addEventListener('keydown', handleSearchKeyboardShortcut, true);
     window.addEventListener('scroll', hideFlagTooltip, true);
     window.addEventListener('blur', hideFlagTooltip, true);
     document.addEventListener('visibilitychange', () => {
@@ -583,6 +586,55 @@
         hideFlagTooltip();
       }
     });
+  }
+
+  function handleSearchKeyboardShortcut(event) {
+    if (!featureSettings.searchKeyboardShortcutEnabled) {
+      return;
+    }
+    // Ignore if a modifier key is held (Ctrl, Alt, Meta)
+    if (event.ctrlKey || event.altKey || event.metaKey) {
+      return;
+    }
+    // Only handle single letter (a-z) or digit (0-9) keys
+    if (event.key.length !== 1 || !/[a-z0-9]/i.test(event.key)) {
+      return;
+    }
+    // Ignore if already typing in an input, textarea, or contenteditable element
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+      return;
+    }
+    // Find the search input based on the current page
+    const searchInput = findSearchInput();
+    if (searchInput) {
+      event.preventDefault();
+      searchInput.focus();
+      // Insert the typed character into the search input
+      const start = searchInput.selectionStart;
+      const end = searchInput.selectionEnd;
+      const value = searchInput.value;
+      searchInput.value = value.slice(0, start) + event.key + value.slice(end);
+      searchInput.selectionStart = searchInput.selectionEnd = start + 1;
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  function findSearchInput() {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/space')) {
+      return document.querySelector('div.absolute.z-\\[600\\] input[placeholder="Search developers..."]');
+    }
+    if (pathname.startsWith('/plugins')) {
+      return document.querySelector('input[placeholder="Search plugins..."]');
+    }
+    if (pathname.startsWith('/projects')) {
+      return document.querySelector('input[placeholder="Search projects..."]');
+    }
+    if (pathname.startsWith('/developers')) {
+      return document.querySelector('input[placeholder="Search developers..."]');
+    }
+    return null;
   }
 
   function installEventHandlers() {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DevGlobe+",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Adds custom country and language tooltips, blocks unavailable repository links on DevGlobe, and makes statistics sortable.",
   "author": "MythUp",
   "permissions": [
@@ -34,7 +34,11 @@
         "https://devglobe.app/stats*",
         "https://devglobe.xyz/stats*",
         "https://devglobe.app/developers/*",
-        "https://devglobe.xyz/developers/*"
+        "https://devglobe.xyz/developers/*",
+        "https://devglobe.app/plugins*",
+        "https://devglobe.xyz/plugins*",
+        "https://devglobe.app/projects*",
+        "https://devglobe.xyz/projects*"
       ],
       "js": ["space-content.js"],
       "run_at": "document_idle"
