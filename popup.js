@@ -5,7 +5,8 @@ const DEFAULT_SETTINGS = {
   flagTooltipsEnabled: true,
   repositoryBlockingEnabled: true,
   statsTableSortingEnabled: true,
-  searchKeyboardShortcutEnabled: true
+  searchKeyboardShortcutEnabled: true,
+  dropdownNavigationEnabled: true
 };
 const THEME_CACHE_KEY = 'devglobe.cachedTheme.v1';
 
@@ -18,7 +19,8 @@ const elements = {
   flagTooltipToggle: document.getElementById('flagTooltipToggle'),
   repositoryBlockingToggle: document.getElementById('repositoryBlockingToggle'),
   statsTableSortingToggle: document.getElementById('statsTableSortingToggle'),
-  searchKeyboardShortcutToggle: document.getElementById('searchKeyboardShortcutToggle')
+  searchKeyboardShortcutToggle: document.getElementById('searchKeyboardShortcutToggle'),
+  dropdownNavigationToggle: document.getElementById('dropdownNavigationToggle')
 };
 
 initializePopup();
@@ -132,6 +134,9 @@ function bindActions() {
   elements.searchKeyboardShortcutToggle.addEventListener('change', () => {
     void updateSetting('searchKeyboardShortcutEnabled', elements.searchKeyboardShortcutToggle.checked);
   });
+  elements.dropdownNavigationToggle.addEventListener('change', () => {
+    void updateSetting('dropdownNavigationEnabled', elements.dropdownNavigationToggle.checked);
+  });
 }
 
 async function loadSettings() {
@@ -162,7 +167,10 @@ function normalizeSettings(rawSettings) {
       : DEFAULT_SETTINGS.statsTableSortingEnabled,
     searchKeyboardShortcutEnabled: typeof rawSettings?.searchKeyboardShortcutEnabled === 'boolean'
       ? rawSettings.searchKeyboardShortcutEnabled
-      : DEFAULT_SETTINGS.searchKeyboardShortcutEnabled
+      : DEFAULT_SETTINGS.searchKeyboardShortcutEnabled,
+    dropdownNavigationEnabled: typeof rawSettings?.dropdownNavigationEnabled === 'boolean'
+      ? rawSettings.dropdownNavigationEnabled
+      : DEFAULT_SETTINGS.dropdownNavigationEnabled
   };
 }
 
@@ -177,6 +185,7 @@ function renderSettings(settings) {
   elements.repositoryBlockingToggle.checked = normalizedSettings.repositoryBlockingEnabled;
   elements.statsTableSortingToggle.checked = normalizedSettings.statsTableSortingEnabled;
   elements.searchKeyboardShortcutToggle.checked = normalizedSettings.searchKeyboardShortcutEnabled;
+  elements.dropdownNavigationToggle.checked = normalizedSettings.dropdownNavigationEnabled;
 }
 
 async function updateSetting(settingName, value) {

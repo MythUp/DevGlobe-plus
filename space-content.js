@@ -20,7 +20,8 @@
     flagTooltipsEnabled: true,
     repositoryBlockingEnabled: true,
     statsTableSortingEnabled: true,
-    searchKeyboardShortcutEnabled: true
+    searchKeyboardShortcutEnabled: true,
+    dropdownNavigationEnabled: true
   };
   let featureSettings = { ...DEFAULT_FEATURE_SETTINGS };
   let tooltipElement = null;
@@ -521,7 +522,10 @@
         : DEFAULT_FEATURE_SETTINGS.statsTableSortingEnabled,
       searchKeyboardShortcutEnabled: typeof rawSettings?.searchKeyboardShortcutEnabled === 'boolean'
         ? rawSettings.searchKeyboardShortcutEnabled
-        : DEFAULT_FEATURE_SETTINGS.searchKeyboardShortcutEnabled
+        : DEFAULT_FEATURE_SETTINGS.searchKeyboardShortcutEnabled,
+      dropdownNavigationEnabled: typeof rawSettings?.dropdownNavigationEnabled === 'boolean'
+        ? rawSettings.dropdownNavigationEnabled
+        : DEFAULT_FEATURE_SETTINGS.dropdownNavigationEnabled
     };
   }
 
@@ -552,6 +556,7 @@
       previousSettings.flagTooltipsEnabled !== featureSettings.flagTooltipsEnabled
       || previousSettings.repositoryBlockingEnabled !== featureSettings.repositoryBlockingEnabled
       || previousSettings.statsTableSortingEnabled !== featureSettings.statsTableSortingEnabled
+      || previousSettings.dropdownNavigationEnabled !== featureSettings.dropdownNavigationEnabled
     ) {
       scheduleScan();
     }
@@ -579,6 +584,7 @@
     document.addEventListener('pointerout', handlePointerOut, true);
     document.addEventListener('click', handleClick, true);
     document.addEventListener('keydown', handleSearchKeyboardShortcut, true);
+    document.addEventListener('keydown', handleDropdownNavigation, true);
     window.addEventListener('scroll', hideFlagTooltip, true);
     window.addEventListener('blur', hideFlagTooltip, true);
     document.addEventListener('visibilitychange', () => {
@@ -635,6 +641,77 @@
       return document.querySelector('input[placeholder="Search developers..."]');
     }
     return null;
+  }
+
+  let dropdownSelectedIndex = -1;
+
+  function handleDropdownNavigation(event) {
+    if (!featureSettings.dropdownNavigationEnabled) {
+      return;
+    }
+
+    const searchInput = findSearchInput();
+    if (!searchInput || document.activeElement !== searchInput) {
+      return;
+    }
+
+    // Find the dropdown container — it's the next sibling element after the search input's parent
+    const searchParent = searchInput.closest('div.relative');
+    if (!searchParent) {
+      return;
+    }
+
+    const dropdown = searchParent.querySelector('div.mt-1\\.5');
+    if (!dropdown) {
+      return;
+    }
+
+    const items = dropdown.querySelectorAll('button');
+    if (items.length === 0) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      dropdownSelectedIndex = updateDropdownSelection(items, dropdownSelectedIndex, 'down');
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      dropdownSelectedIndex = updateDropdownSelection(items, dropdownSelectedIndex, 'up');
+    } else if (event.key === 'Enter' && dropdownSelectedIndex >= 0 && dropdownSelectedIndex < items.length) {
+      event.preventDefault();
+      items[dropdownSelectedIndex].click();
+      dropdownSelectedIndex = -1;
+    } else if (event.key === 'Escape') {
+      dropdownSelectedIndex = -1;
+    }
+  }
+
+  function updateDropdownSelection(items, currentIndex, direction) {
+    let newIndex;
+    if (direction === 'down') {
+      if (currentIndex < 0 || currentIndex >= items.length - 1) {
+        newIndex = 0;
+      } else {
+        newIndex = currentIndex + 1;
+      }
+    } else {
+      if (currentIndex <= 0 || currentIndex >= items.length) {
+        newIndex = items.length - 1;
+      } else {
+        newIndex = currentIndex - 1;
+      }
+    }
+
+    // Remove selection from all items
+    items.forEach((item) => {
+      item.classList.remove('bg-pj-hover');
+    });
+
+    // Add selection to the new item
+    items[newIndex].classList.add('bg-pj-hover');
+    items[newIndex].scrollIntoView({ block: 'nearest' });
+
+    return newIndex;
   }
 
   function installEventHandlers() {
