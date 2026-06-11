@@ -6,7 +6,8 @@ const DEFAULT_SETTINGS = {
   repositoryBlockingEnabled: true,
   statsTableSortingEnabled: true,
   searchKeyboardShortcutEnabled: true,
-  dropdownNavigationEnabled: true
+  dropdownNavigationEnabled: true,
+  escapeKeyClosesModals: true
 };
 const THEME_CACHE_KEY = 'devglobe.cachedTheme.v1';
 
@@ -20,7 +21,8 @@ const elements = {
   repositoryBlockingToggle: document.getElementById('repositoryBlockingToggle'),
   statsTableSortingToggle: document.getElementById('statsTableSortingToggle'),
   searchKeyboardShortcutToggle: document.getElementById('searchKeyboardShortcutToggle'),
-  dropdownNavigationToggle: document.getElementById('dropdownNavigationToggle')
+  dropdownNavigationToggle: document.getElementById('dropdownNavigationToggle'),
+  escapeKeyClosesModalsToggle: document.getElementById('escapeKeyClosesModalsToggle')
 };
 
 initializePopup();
@@ -137,6 +139,9 @@ function bindActions() {
   elements.dropdownNavigationToggle.addEventListener('change', () => {
     void updateSetting('dropdownNavigationEnabled', elements.dropdownNavigationToggle.checked);
   });
+  elements.escapeKeyClosesModalsToggle.addEventListener('change', () => {
+    void updateSetting('escapeKeyClosesModals', elements.escapeKeyClosesModalsToggle.checked);
+  });
 }
 
 async function loadSettings() {
@@ -170,7 +175,10 @@ function normalizeSettings(rawSettings) {
       : DEFAULT_SETTINGS.searchKeyboardShortcutEnabled,
     dropdownNavigationEnabled: typeof rawSettings?.dropdownNavigationEnabled === 'boolean'
       ? rawSettings.dropdownNavigationEnabled
-      : DEFAULT_SETTINGS.dropdownNavigationEnabled
+      : DEFAULT_SETTINGS.dropdownNavigationEnabled,
+    escapeKeyClosesModals: typeof rawSettings?.escapeKeyClosesModals === 'boolean'
+      ? rawSettings.escapeKeyClosesModals
+      : DEFAULT_SETTINGS.escapeKeyClosesModals
   };
 }
 
@@ -186,6 +194,7 @@ function renderSettings(settings) {
   elements.statsTableSortingToggle.checked = normalizedSettings.statsTableSortingEnabled;
   elements.searchKeyboardShortcutToggle.checked = normalizedSettings.searchKeyboardShortcutEnabled;
   elements.dropdownNavigationToggle.checked = normalizedSettings.dropdownNavigationEnabled;
+  elements.escapeKeyClosesModalsToggle.checked = normalizedSettings.escapeKeyClosesModals;
 }
 
 async function updateSetting(settingName, value) {

@@ -21,7 +21,8 @@
     repositoryBlockingEnabled: true,
     statsTableSortingEnabled: true,
     searchKeyboardShortcutEnabled: true,
-    dropdownNavigationEnabled: true
+    dropdownNavigationEnabled: true,
+    escapeKeyClosesModals: true
   };
   let featureSettings = { ...DEFAULT_FEATURE_SETTINGS };
   let tooltipElement = null;
@@ -525,7 +526,10 @@
         : DEFAULT_FEATURE_SETTINGS.searchKeyboardShortcutEnabled,
       dropdownNavigationEnabled: typeof rawSettings?.dropdownNavigationEnabled === 'boolean'
         ? rawSettings.dropdownNavigationEnabled
-        : DEFAULT_FEATURE_SETTINGS.dropdownNavigationEnabled
+        : DEFAULT_FEATURE_SETTINGS.dropdownNavigationEnabled,
+      escapeKeyClosesModals: typeof rawSettings?.escapeKeyClosesModals === 'boolean'
+        ? rawSettings.escapeKeyClosesModals
+        : DEFAULT_FEATURE_SETTINGS.escapeKeyClosesModals
     };
   }
 
@@ -557,6 +561,7 @@
       || previousSettings.repositoryBlockingEnabled !== featureSettings.repositoryBlockingEnabled
       || previousSettings.statsTableSortingEnabled !== featureSettings.statsTableSortingEnabled
       || previousSettings.dropdownNavigationEnabled !== featureSettings.dropdownNavigationEnabled
+      || previousSettings.escapeKeyClosesModals !== featureSettings.escapeKeyClosesModals
     ) {
       scheduleScan();
     }
@@ -585,6 +590,7 @@
     document.addEventListener('click', handleClick, true);
     document.addEventListener('keydown', handleSearchKeyboardShortcut, true);
     document.addEventListener('keydown', handleDropdownNavigation, true);
+    document.addEventListener('keydown', handleEscapeKey, true);
     window.addEventListener('scroll', hideFlagTooltip, true);
     window.addEventListener('blur', hideFlagTooltip, true);
     document.addEventListener('visibilitychange', () => {
@@ -712,6 +718,35 @@
     items[newIndex].scrollIntoView({ block: 'nearest' });
 
     return newIndex;
+  }
+
+  function handleEscapeKey(event) {
+    if (!featureSettings.escapeKeyClosesModals) {
+      return;
+    }
+    // Only handle Escape key
+    if (event.key !== 'Escape') {
+      return;
+    }
+    
+    // Priority 1: MapLibre popup
+    const mapLibrePopup = document.querySelector('.maplibregl-popup');
+    if (mapLibrePopup) {
+        const closeButton = mapLibrePopup.querySelector('.maplibregl-popup-close-button');
+        if (closeButton) {
+            closeButton.click();
+            return; // Stop here - never close both
+        }
+    }
+    
+    // Priority 2: Profile panel (only if MapLibre popup not found)
+    const profilePanel = document.querySelector('[data-panel="true"]');
+    if (profilePanel) {
+        const closeButton = profilePanel.querySelector('button:has(svg path[d*="M18 6L6"])');
+        if (closeButton) {
+            closeButton.click();
+        }
+    }
   }
 
   function installEventHandlers() {
