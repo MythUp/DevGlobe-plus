@@ -23,9 +23,13 @@
     searchKeyboardShortcutEnabled: true,
     dropdownNavigationEnabled: true,
     escapeKeyClosesModals: true,
-    replaceCommandKeyEnabled: true
+    replaceCommandKeyEnabled: false
   };
   let featureSettings = { ...DEFAULT_FEATURE_SETTINGS };
+
+  // Appliquer le remplacement initial en fonction des paramètres par défaut
+  applyCommandKeyReplacement();
+
   let tooltipElement = null;
   let tooltipVisible = false;
   let activeTooltipAnchor = null;
@@ -43,6 +47,14 @@
   let lastPersistedTheme = null;
   let detectScheduled = null;
   let detectRunning = false;
+
+  // Listen for messages from the popup script
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'updateCommandKeySetting') {
+      featureSettings.replaceCommandKeyEnabled = request.enabled;
+      applyCommandKeyReplacement(); // Appliquer le changement immédiatement
+    }
+  });
 
   try {
     countryDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -198,16 +210,23 @@
   function hideFlagTooltip() {
     cancelHideTooltip();
     tooltipVisible = false;
-    activeTooltipAnchor = null;
+  }
 
-    if (!tooltipElement) {
-      return;
-    }
-
-    tooltipElement.dataset.visible = 'false';
-    tooltipElement.setAttribute('aria-hidden', 'true');
-    tooltipElement.removeAttribute('data-placement');
-    tooltipElement.style.visibility = 'hidden';
+  function applyCommandKeyReplacement() {
+    const targetElements = document.querySelectorAll('body *:not(script):not(style)'); // Éviter les scripts et les styles
+    targetElements.forEach(element => {
+      // Ne traiter que les nœuds de texte directement pour éviter de casser la structure HTML
+      element.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          if (featureSettings.replaceCommandKeyEnabled) {
+            node.textContent = node.textContent.replace(/⌘/g, 'CTRL');
+          } else {
+            // Rétablir si cela a été remplacé auparavant
+            node.textContent = node.textContent.replace(/CTRL/g, '⌘');
+          }
+        }
+      });
+    });
   }
 
   function ensureTooltipElement() {

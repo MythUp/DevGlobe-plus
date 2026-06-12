@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
   searchKeyboardShortcutEnabled: true,
   dropdownNavigationEnabled: true,
   escapeKeyClosesModals: true,
-  replaceCommandKeyEnabled: true
+  replaceCommandKeyEnabled: false
 };
 
 const THEME_CACHE_KEY = 'devglobe.cachedTheme.v1';
@@ -201,10 +201,19 @@ function renderSettings(settings) {
   }
 }
 
-async function updateSetting(settingName, value) {
-  const currentSettings = await loadSettings();
-  const nextSettings = { ...currentSettings, [settingName]: Boolean(value) };
-  await chrome.storage.local.set({ [SETTINGS_KEY]: nextSettings });
+async function updateSetting(key, value) {
+  const settings = await loadSettings();
+  settings[key] = value;
+  await chrome.storage.local.set({ [SETTINGS_KEY]: settings });
+
+  // Envoyer un message au script de contenu si le réglage de la touche de commande change
+  if (key === 'replaceCommandKeyEnabled') {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && tabs[0].id) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'updateCommandKeySetting', enabled: value });
+      }
+    });
+  }
 }
 
 function handleStorageChange(changes, areaName) {
