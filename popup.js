@@ -7,10 +7,11 @@ const DEFAULT_SETTINGS = {
   statsTableSortingEnabled: true,
   searchKeyboardShortcutEnabled: true,
   dropdownNavigationEnabled: true,
-  escapeKeyClosesModals: true
+  escapeKeyClosesModals: true,
+  replaceCommandKeyEnabled: true
 };
-const THEME_CACHE_KEY = 'devglobe.cachedTheme.v1';
 
+const THEME_CACHE_KEY = 'devglobe.cachedTheme.v1';
 const manifest = chrome.runtime.getManifest();
 
 const elements = {
@@ -22,8 +23,16 @@ const elements = {
   statsTableSortingToggle: document.getElementById('statsTableSortingToggle'),
   searchKeyboardShortcutToggle: document.getElementById('searchKeyboardShortcutToggle'),
   dropdownNavigationToggle: document.getElementById('dropdownNavigationToggle'),
-  escapeKeyClosesModalsToggle: document.getElementById('escapeKeyClosesModalsToggle')
+  escapeKeyClosesModalsToggle: document.getElementById('escapeKeyClosesModalsToggle'),
+  replaceCommandKeyToggle: document.getElementById('replaceCommandKeyToggle'),
+  replaceCommandKeyRow: document.getElementById('replaceCommandKeyRow')
 };
+
+// Detect if the OS is Windows or Linux
+function isWindowsOrLinux() {
+  const platform = window.navigator.platform;
+  return /Win|Linux|X11/.test(platform);
+}
 
 initializePopup();
 
@@ -34,7 +43,13 @@ async function initializePopup() {
   const settings = await loadSettings();
   await ensureDefaultSettings(settings);
   renderSettings(settings);
-
+  
+  // Hide or show the setting based on the OS
+  const isWinOrLinux = isWindowsOrLinux();
+  if (elements.replaceCommandKeyRow) {
+    elements.replaceCommandKeyRow.style.display = isWinOrLinux ? '' : 'none';
+  }
+  
   chrome.storage.onChanged.addListener(handleStorageChange);
 }
 
@@ -54,12 +69,10 @@ async function applyCachedTheme() {
 
 function renderManifestDetails() {
   const manifestDetails = getManifestDetails();
-
   document.title = manifestDetails.title;
   elements.title.textContent = manifestDetails.title;
   elements.version.textContent = `Version ${manifestDetails.version}`;
   elements.authorLink.textContent = manifestDetails.authorName;
-
   if (manifestDetails.authorUrl) {
     elements.authorLink.href = manifestDetails.authorUrl;
     elements.authorLink.target = '_blank';
@@ -81,26 +94,15 @@ function getManifestDetails() {
     ? manifest.version.trim()
     : 'unknown';
   const author = getManifestAuthor(manifest);
-
-  return {
-    title,
-    version,
-    authorName: author.name,
-    authorUrl: author.url
-  };
+  return { title, version, authorName: author.name, authorUrl: author.url };
 }
 
 function getManifestAuthor(manifestData) {
   const rawAuthor = manifestData.author;
-
   if (typeof rawAuthor === 'string' && rawAuthor.trim()) {
     const authorName = rawAuthor.trim();
-    return {
-      name: authorName,
-      url: `https://github.com/${encodeURIComponent(authorName)}`
-    };
+    return { name: authorName, url: `https://github.com/${encodeURIComponent(authorName)}` };
   }
-
   if (rawAuthor && typeof rawAuthor === 'object') {
     const authorName = typeof rawAuthor.name === 'string' && rawAuthor.name.trim()
       ? rawAuthor.name.trim()
@@ -108,28 +110,18 @@ function getManifestAuthor(manifestData) {
     const authorUrl = typeof rawAuthor.url === 'string' && rawAuthor.url.trim()
       ? rawAuthor.url.trim()
       : '';
-
-    return {
-      name: authorName,
-      url: authorUrl
-    };
+    return { name: authorName, url: authorUrl };
   }
-
-  return {
-    name: 'Unknown author',
-    url: ''
-  };
+  return { name: 'Unknown author', url: '' };
 }
 
 function bindActions() {
   elements.flagTooltipToggle.addEventListener('change', () => {
     void updateSetting('flagTooltipsEnabled', elements.flagTooltipToggle.checked);
   });
-
   elements.repositoryBlockingToggle.addEventListener('change', () => {
     void updateSetting('repositoryBlockingEnabled', elements.repositoryBlockingToggle.checked);
   });
-
   elements.statsTableSortingToggle.addEventListener('change', () => {
     void updateSetting('statsTableSortingEnabled', elements.statsTableSortingToggle.checked);
   });
@@ -142,20 +134,26 @@ function bindActions() {
   elements.escapeKeyClosesModalsToggle.addEventListener('change', () => {
     void updateSetting('escapeKeyClosesModals', elements.escapeKeyClosesModalsToggle.checked);
   });
+  if (elements.replaceCommandKeyToggle) {
+    elements.replaceCommandKeyToggle.addEventListener('change', () => {
+      void updateSetting('replaceCommandKeyEnabled', elements.replaceCommandKeyToggle.checked);
+    });
+  }
 }
 
 async function loadSettings() {
   const stored = await chrome.storage.local.get(SETTINGS_KEY);
   const rawSettings = stored[SETTINGS_KEY];
-  
   // If no settings exist yet, save defaults
   if (!rawSettings) {
-    await chrome.storage.local.set({
-      [SETTINGS_KEY]: DEFAULT_SETTINGS
-    });
-    return DEFAULT_SETTINGS;
+    const defaultSettings = { ...DEFAULT_SETTINGS };
+    // Enable by default on Windows/Linux
+    if (isWindowsOrLinux()) {
+      defaultSettings.replaceCommandKeyEnabled = true;
+    }
+    await chrome.storage.local.set({ [SETTINGS_KEY]: defaultSettings });
+    return defaultSettings;
   }
-  
   return normalizeSettings(rawSettings);
 }
 
@@ -178,7 +176,10 @@ function normalizeSettings(rawSettings) {
       : DEFAULT_SETTINGS.dropdownNavigationEnabled,
     escapeKeyClosesModals: typeof rawSettings?.escapeKeyClosesModals === 'boolean'
       ? rawSettings.escapeKeyClosesModals
-      : DEFAULT_SETTINGS.escapeKeyClosesModals
+      : DEFAULT_SETTINGS.escapeKeyClosesModals,
+    replaceCommandKeyEnabled: typeof rawSettings?.replaceCommandKeyEnabled === 'boolean'
+      ? rawSettings.replaceCommandKeyEnabled
+      : DEFAULT_SETTINGS.replaceCommandKeyEnabled
   };
 }
 
@@ -195,29 +196,24 @@ function renderSettings(settings) {
   elements.searchKeyboardShortcutToggle.checked = normalizedSettings.searchKeyboardShortcutEnabled;
   elements.dropdownNavigationToggle.checked = normalizedSettings.dropdownNavigationEnabled;
   elements.escapeKeyClosesModalsToggle.checked = normalizedSettings.escapeKeyClosesModals;
+  if (elements.replaceCommandKeyToggle) {
+    elements.replaceCommandKeyToggle.checked = normalizedSettings.replaceCommandKeyEnabled;
+  }
 }
 
 async function updateSetting(settingName, value) {
   const currentSettings = await loadSettings();
-  const nextSettings = {
-    ...currentSettings,
-    [settingName]: Boolean(value)
-  };
-
-  await chrome.storage.local.set({
-    [SETTINGS_KEY]: nextSettings
-  });
+  const nextSettings = { ...currentSettings, [settingName]: Boolean(value) };
+  await chrome.storage.local.set({ [SETTINGS_KEY]: nextSettings });
 }
 
 function handleStorageChange(changes, areaName) {
   if (areaName !== 'local') {
     return;
   }
-
   if (changes[SETTINGS_KEY]) {
     renderSettings(normalizeSettings(changes[SETTINGS_KEY].newValue));
   }
-
   if (changes[THEME_CACHE_KEY]) {
     const newVal = changes[THEME_CACHE_KEY].newValue;
     if (newVal && (newVal.theme === 'light' || newVal.theme === 'dark')) {

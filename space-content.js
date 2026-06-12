@@ -22,7 +22,8 @@
     statsTableSortingEnabled: true,
     searchKeyboardShortcutEnabled: true,
     dropdownNavigationEnabled: true,
-    escapeKeyClosesModals: true
+    escapeKeyClosesModals: true,
+    replaceCommandKeyEnabled: true
   };
   let featureSettings = { ...DEFAULT_FEATURE_SETTINGS };
   let tooltipElement = null;
@@ -529,7 +530,10 @@
         : DEFAULT_FEATURE_SETTINGS.dropdownNavigationEnabled,
       escapeKeyClosesModals: typeof rawSettings?.escapeKeyClosesModals === 'boolean'
         ? rawSettings.escapeKeyClosesModals
-        : DEFAULT_FEATURE_SETTINGS.escapeKeyClosesModals
+        : DEFAULT_FEATURE_SETTINGS.escapeKeyClosesModals,
+      replaceCommandKeyEnabled: typeof rawSettings?.replaceCommandKeyEnabled === 'boolean'
+        ? rawSettings.replaceCommandKeyEnabled
+        : DEFAULT_FEATURE_SETTINGS.replaceCommandKeyEnabled
     };
   }
 
@@ -562,6 +566,7 @@
       || previousSettings.statsTableSortingEnabled !== featureSettings.statsTableSortingEnabled
       || previousSettings.dropdownNavigationEnabled !== featureSettings.dropdownNavigationEnabled
       || previousSettings.escapeKeyClosesModals !== featureSettings.escapeKeyClosesModals
+      || previousSettings.replaceCommandKeyEnabled !== featureSettings.replaceCommandKeyEnabled
     ) {
       scheduleScan();
     }
@@ -816,6 +821,22 @@
 
     if (isStatsPage()) {
       enhanceStatsTables();
+    }
+    if (featureSettings.replaceCommandKeyEnabled) {
+      replaceCommandKeyInDOM();
+    }
+  }
+
+  function replaceCommandKeyInDOM() {
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      { acceptNode: (node) => node.nodeValue.includes('⌘') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT }
+    );
+    
+    let node;
+    while ((node = walker.nextNode())) {
+      node.nodeValue = node.nodeValue.replace(/⌘/g, 'CTRL');
     }
   }
 
