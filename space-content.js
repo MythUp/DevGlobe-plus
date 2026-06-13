@@ -632,8 +632,8 @@
     if (event.ctrlKey || event.altKey || event.metaKey) {
       return;
     }
-    // Only handle single letter (a-z) or digit (0-9) keys
-    if (event.key.length !== 1 || !/[a-z0-9]/i.test(event.key)) {
+    // Only handle single printable character keys (letters including accented, digits, hyphen, underscore)
+    if (event.key.length !== 1 || !/[\p{L}\p{N}_-]/u.test(event.key)) {
       return;
     }
     // Ignore if already typing in an input, textarea, or contenteditable element
