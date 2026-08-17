@@ -4,7 +4,6 @@
 
 - Disabled links to repositories you can't access (private repositories or repositories you don't have permission to view).
 - Added tooltips to indicate which country and language each flag represents.
-- Added sortable stats tables on the [/stats](https://devglobe.app/stats) page.
 - Search focus shortcut: press any letter (a-z) or digit (0-9) on [/space](https://devglobe.app/space), [/plugins](https://devglobe.app/plugins), [/projects](https://devglobe.app/projects), or [/developers](https://devglobe.app/developers) to auto-focus the search input.
 - Replace the `⌘` symbol with `CTRL` on Windows/Linux for better clarity. 
 

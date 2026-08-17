@@ -4,7 +4,6 @@ const SETTINGS_KEY = 'devglobe.featureSettings.v1';
 const DEFAULT_SETTINGS = {
   flagTooltipsEnabled: true,
   repositoryBlockingEnabled: true,
-  statsTableSortingEnabled: true,
   searchKeyboardShortcutEnabled: true,
   dropdownNavigationEnabled: true,
   escapeKeyClosesModals: true,
@@ -20,7 +19,6 @@ const elements = {
   authorLink: document.getElementById('popupAuthorLink'),
   flagTooltipToggle: document.getElementById('flagTooltipToggle'),
   repositoryBlockingToggle: document.getElementById('repositoryBlockingToggle'),
-  statsTableSortingToggle: document.getElementById('statsTableSortingToggle'),
   searchKeyboardShortcutToggle: document.getElementById('searchKeyboardShortcutToggle'),
   dropdownNavigationToggle: document.getElementById('dropdownNavigationToggle'),
   escapeKeyClosesModalsToggle: document.getElementById('escapeKeyClosesModalsToggle'),
@@ -122,9 +120,6 @@ function bindActions() {
   elements.repositoryBlockingToggle.addEventListener('change', () => {
     void updateSetting('repositoryBlockingEnabled', elements.repositoryBlockingToggle.checked);
   });
-  elements.statsTableSortingToggle.addEventListener('change', () => {
-    void updateSetting('statsTableSortingEnabled', elements.statsTableSortingToggle.checked);
-  });
   elements.searchKeyboardShortcutToggle.addEventListener('change', () => {
     void updateSetting('searchKeyboardShortcutEnabled', elements.searchKeyboardShortcutToggle.checked);
   });
@@ -165,9 +160,6 @@ function normalizeSettings(rawSettings) {
     repositoryBlockingEnabled: typeof rawSettings?.repositoryBlockingEnabled === 'boolean'
       ? rawSettings.repositoryBlockingEnabled
       : DEFAULT_SETTINGS.repositoryBlockingEnabled,
-    statsTableSortingEnabled: typeof rawSettings?.statsTableSortingEnabled === 'boolean'
-      ? rawSettings.statsTableSortingEnabled
-      : DEFAULT_SETTINGS.statsTableSortingEnabled,
     searchKeyboardShortcutEnabled: typeof rawSettings?.searchKeyboardShortcutEnabled === 'boolean'
       ? rawSettings.searchKeyboardShortcutEnabled
       : DEFAULT_SETTINGS.searchKeyboardShortcutEnabled,
@@ -192,7 +184,6 @@ function renderSettings(settings) {
   const normalizedSettings = normalizeSettings(settings);
   elements.flagTooltipToggle.checked = normalizedSettings.flagTooltipsEnabled;
   elements.repositoryBlockingToggle.checked = normalizedSettings.repositoryBlockingEnabled;
-  elements.statsTableSortingToggle.checked = normalizedSettings.statsTableSortingEnabled;
   elements.searchKeyboardShortcutToggle.checked = normalizedSettings.searchKeyboardShortcutEnabled;
   elements.dropdownNavigationToggle.checked = normalizedSettings.dropdownNavigationEnabled;
   elements.escapeKeyClosesModalsToggle.checked = normalizedSettings.escapeKeyClosesModals;
